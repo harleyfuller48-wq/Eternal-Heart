@@ -87,7 +87,7 @@ public final class InfiniteHeartMod implements ModInitializer {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(
             Commands.literal("infiniteheart")
                 .then(Commands.literal("give")
-                    .requires(source -> source.getEntity() instanceof ServerPlayer p && source.getServer().getPlayerList().isOp(p.getGameProfile()))
+                .requires(source -> source.getEntity() instanceof ServerPlayer p && source.getServer().getPlayerList().isOp(p.nameAndId()))
                     .then(Commands.argument("target", EntityArgument.player())
                         .executes(context -> {
                             ServerPlayer target = EntityArgument.getPlayer(context, "target");
