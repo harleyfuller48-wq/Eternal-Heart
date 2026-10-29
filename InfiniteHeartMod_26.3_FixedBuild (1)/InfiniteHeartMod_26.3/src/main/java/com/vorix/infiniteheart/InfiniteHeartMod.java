@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.minecraft.commands.Commands;
+import com.mojang.brigadier.Command;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -59,7 +60,7 @@ public final class InfiniteHeartMod implements ModInitializer {
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, source) -> {
             if (entity instanceof ServerPlayer player && !hasHeart(player)) {
                 ELIMINATED.add(player.getUUID());
-                saveEliminated(player.getServer());
+                saveEliminated(player.level().getServer());
                 player.sendSystemMessage(Component.literal("You have been eliminated. You can only return if someone revives you with an Infinite Heart."));
             }
         });
@@ -86,15 +87,18 @@ public final class InfiniteHeartMod implements ModInitializer {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(
             Commands.literal("infiniteheart")
                 .then(Commands.literal("give")
-                    .requires(source -> source.hasPermission(2))
+                    .requires(source -> source.getEntity() instanceof ServerPlayer p && source.getServer().getPlayerList().isOp(p.getGameProfile()))
                     .then(Commands.argument("target", EntityArgument.player())
                         .executes(context -> {
                             ServerPlayer target = EntityArgument.getPlayer(context, "target");
                             ItemStack heart = new ItemStack(Items.END_CRYSTAL);
                             heart.set(DataComponents.CUSTOM_NAME, Component.literal(HEART_NAME));
                             boolean added = target.getInventory().add(heart);
-                            if (!added) target.drop(heart, false);
-                            context.getSource().sendSuccess(() -> Component.literal("Gave an Infinite Heart to " + target.getGameProfile().getName() + "."), true);
+                            if (!added) {
+                                context.getSource().sendFailure(Component.literal("Your inventory is full; no heart was given."));
+                                return 0;
+                            }
+                            context.getSource().sendSuccess(() -> Component.literal("Gave an Infinite Heart to " + target.getGameProfile().name() + "."), true);
                             target.sendSystemMessage(Component.literal("You received the Infinite Heart. Keep it in your inventory to become immortal."));
                             return Command.SINGLE_SUCCESS;
                         })))
@@ -109,7 +113,7 @@ public final class InfiniteHeartMod implements ModInitializer {
                                 return 0;
                             }
                             if (!ELIMINATED.contains(target.getUUID())) {
-                                context.getSource().sendFailure(Component.literal(target.getGameProfile().getName() + " is not eliminated."));
+                                context.getSource().sendFailure(Component.literal(target.getGameProfile().name() + " is not eliminated."));
                                 return 0;
                             }
 
@@ -120,9 +124,9 @@ public final class InfiniteHeartMod implements ModInitializer {
                             target.getFoodData().setFoodLevel(20);
                             saveEliminated(context.getSource().getServer());
 
-                            target.sendSystemMessage(Component.literal("You have been revived by " + reviver.getGameProfile().getName() + "!"));
+                            target.sendSystemMessage(Component.literal("You have been revived by " + reviver.getGameProfile().name() + "!"));
                             context.getSource().getServer().getPlayerList().broadcastSystemMessage(
-                                Component.literal(target.getGameProfile().getName() + " has been brought back to life by " + reviver.getGameProfile().getName() + "!"), false);
+                                Component.literal(target.getGameProfile().name() + " has been brought back to life by " + reviver.getGameProfile().name() + "!"), false);
                             return Command.SINGLE_SUCCESS;
                         })))
                 .then(Commands.literal("status")
@@ -141,11 +145,8 @@ public final class InfiniteHeartMod implements ModInitializer {
     }
 
     private static boolean hasHeart(ServerPlayer player) {
-        for (ItemStack stack : player.getInventory().items) {
-            if (isHeart(stack)) return true;
-        }
-        for (ItemStack stack : player.getInventory().offhand) {
-            if (isHeart(stack)) return true;
+        for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+            if (isHeart(player.getInventory().getItem(slot))) return true;
         }
         return false;
     }
