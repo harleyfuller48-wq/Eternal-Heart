@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "infiniteheart",
+  "version": "${version}",
+  "name": "Infinite Heart",
+  "description": "Server-side hardcore elimination, revival, and immortality using the original Infinite Heart End Crystal texture pack.",
+  "authors": ["V0R1X"],
+  "license": "MIT",
+  "environment": "server",
+  "entrypoints": {
+    "main": ["com.vorix.infiniteheart.InfiniteHeartMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
