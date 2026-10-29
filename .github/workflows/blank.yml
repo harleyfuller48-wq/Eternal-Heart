@@ -22,11 +22,24 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build mod
-        run: gradle build --no-daemon
+      - name: Find and build mod
+        shell: bash
+        run: |
+          PROJECT_FILE=$(find . -type f \( -name build.gradle -o -name build.gradle.kts \) -not -path './.git/*' | head -n 1)
 
-      - name: Upload compiled JAR
+          if [ -z "$PROJECT_FILE" ]; then
+            echo "ERROR: Cannot find build.gradle in the repository."
+            find . -maxdepth 4 -type f | head -n 100
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$PROJECT_FILE")
+          echo "Building project in: $PROJECT_DIR"
+          gradle -p "$PROJECT_DIR" build --no-daemon
+
+      - name: Upload compiled mod
         uses: actions/upload-artifact@v4
         with:
           name: InfiniteHeart-26.3
-          path: build/libs/*.jar
+          path: '**/build/libs/*.jar'
+          if-no-files-found: error
